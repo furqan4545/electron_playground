@@ -1,5 +1,5 @@
 // import React, { useEffect, useState } from "react";
-// import { Video, Monitor, X, Maximize } from "lucide-react";
+// import { Video, Monitor, X, Maximize, Mic } from "lucide-react";
 
 // interface SourceItem {
 //   id: string;
@@ -46,6 +46,10 @@
 
 //   const [quality, setQuality] = useState<"high" | "medium" | "low">("high");
 
+//   const [includeMic, setIncludeMic] = useState(true);
+//   const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([]);
+//   const [selectedMicId, setSelectedMicId] = useState<string>("");
+
 //   // Get screens and windows separately
 //   const getScreens = () => {
 //     return sources.filter((source) => source.id.includes("screen:"));
@@ -55,6 +59,27 @@
 //     return sources.filter((source) => source.id.includes("window:"));
 //   };
 
+//   // Get available microphones
+//   useEffect(() => {
+//     async function getMicrophones() {
+//       try {
+//         const devices = await navigator.mediaDevices.enumerateDevices();
+//         const mics = devices.filter((device) => device.kind === "audioinput");
+//         setMicDevices(mics);
+
+//         // Set default microphone
+//         if (mics.length > 0) {
+//           setSelectedMicId(mics[0].deviceId);
+//         }
+//       } catch (err) {
+//         console.error("Error getting microphones:", err);
+//       }
+//     }
+
+//     getMicrophones();
+//   }, []);
+
+//   // Get platform
 //   useEffect(() => {
 //     // Get platform on component mount
 //     (window as any).electron.getPlatform().then(setPlatform);
@@ -81,7 +106,7 @@
 
 //       const qualityPreset = QUALITY_PRESETS[quality];
 
-//       const stream = await navigator.mediaDevices.getDisplayMedia({
+//       const displayStream = await navigator.mediaDevices.getDisplayMedia({
 //         audio: platform !== "darwin",
 //         video: {
 //           frameRate: { ideal: qualityPreset.frameRate },
@@ -94,10 +119,10 @@
 //         } as MediaTrackConstraints,
 //       });
 
-//       console.log("Got media stream:", stream);
+//       console.log("Got media displayStream:", displayStream);
 
 //       // Apply quality settings to the video track
-//       const videoTrack = stream.getVideoTracks()[0];
+//       const videoTrack = displayStream.getVideoTracks()[0];
 //       const capabilities = videoTrack.getCapabilities();
 //       console.log("Track capabilities:", capabilities);
 
@@ -111,7 +136,36 @@
 //         console.warn("Couldn't apply all constraints:", e);
 //       }
 
-//       const recorder = new MediaRecorder(stream, {
+//       /////////////////////////////////
+//       // If microphone is enabled, get microphone stream
+//       let finalStream = displayStream;
+//       if (includeMic) {
+//         try {
+//           const micStream = await navigator.mediaDevices.getUserMedia({
+//             audio: {
+//               deviceId: selectedMicId ? { exact: selectedMicId } : undefined,
+//               echoCancellation: true,
+//               noiseSuppression: true,
+//               autoGainControl: true,
+//             },
+//             video: false,
+//           });
+
+//           // Combine display and microphone streams
+//           finalStream = new MediaStream([
+//             ...displayStream.getVideoTracks(),
+//             ...displayStream.getAudioTracks(),
+//             ...micStream.getAudioTracks(),
+//           ]);
+//         } catch (micError) {
+//           console.error("Failed to get microphone access:", micError);
+//           // Continue with just display audio if mic fails
+//         }
+//       }
+
+//       /////////////////////////////////
+
+//       const recorder = new MediaRecorder(finalStream, {
 //         mimeType: "video/webm;codecs=vp8,opus",
 //         videoBitsPerSecond: qualityPreset.videoBitsPerSecond,
 //         audioBitsPerSecond: 128000, // 128 kbps audio
@@ -142,7 +196,7 @@
 //         } catch (error) {
 //           console.error("Failed to save recording:", error);
 //         } finally {
-//           stream.getTracks().forEach((track) => track.stop());
+//           finalStream.getTracks().forEach((track) => track.stop());
 //           setRecordedChunks([]);
 //           setMediaRecorder(null);
 //           setIsRecording(false);
@@ -199,6 +253,43 @@
 //                 {quality === "medium" && "Balanced quality and file size"}
 //                 {quality === "low" && "Smaller file size, reduced quality"}
 //               </p>
+//             </div>
+
+//             {/* Microphone Options */}
+//             <div className="mb-6 space-y-4">
+//               <div className="flex items-center gap-2">
+//                 <input
+//                   type="checkbox"
+//                   id="include-mic"
+//                   checked={includeMic}
+//                   onChange={(e) => setIncludeMic(e.target.checked)}
+//                   className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+//                 />
+//                 <label
+//                   htmlFor="include-mic"
+//                   className="text-sm font-medium text-gray-700 flex items-center gap-2"
+//                 >
+//                   <Mic className="w-4 h-4" />
+//                   Include Microphone Audio
+//                 </label>
+//               </div>
+
+//               {includeMic && micDevices.length > 0 && (
+//                 <div className="pl-6">
+//                   <select
+//                     value={selectedMicId}
+//                     onChange={(e) => setSelectedMicId(e.target.value)}
+//                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition-colors"
+//                   >
+//                     {micDevices.map((device) => (
+//                       <option key={device.deviceId} value={device.deviceId}>
+//                         {device.label ||
+//                           `Microphone ${device.deviceId.slice(0, 5)}...`}
+//                       </option>
+//                     ))}
+//                   </select>
+//                 </div>
+//               )}
 //             </div>
 
 //             {/* Start/Stop Recording Button */}
@@ -335,7 +426,7 @@
 ///////////////////////////
 
 import React, { useEffect, useState } from "react";
-import { Video, Monitor, X, Maximize } from "lucide-react";
+import { Video, Monitor, X, Maximize, Mic } from "lucide-react";
 
 interface SourceItem {
   id: string;
@@ -382,6 +473,10 @@ const ScreenRecorder = () => {
 
   const [quality, setQuality] = useState<"high" | "medium" | "low">("high");
 
+  const [includeMic, setIncludeMic] = useState(true);
+  const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedMicId, setSelectedMicId] = useState<string>("");
+
   // Get screens and windows separately
   const getScreens = () => {
     return sources.filter((source) => source.id.includes("screen:"));
@@ -391,6 +486,27 @@ const ScreenRecorder = () => {
     return sources.filter((source) => source.id.includes("window:"));
   };
 
+  // Get available microphones
+  useEffect(() => {
+    async function getMicrophones() {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const mics = devices.filter((device) => device.kind === "audioinput");
+        setMicDevices(mics);
+
+        // Set default microphone
+        if (mics.length > 0) {
+          setSelectedMicId(mics[0].deviceId);
+        }
+      } catch (err) {
+        console.error("Error getting microphones:", err);
+      }
+    }
+
+    getMicrophones();
+  }, []);
+
+  // Get platform
   useEffect(() => {
     // Get platform on component mount
     (window as any).electron.getPlatform().then(setPlatform);
@@ -417,7 +533,7 @@ const ScreenRecorder = () => {
 
       const qualityPreset = QUALITY_PRESETS[quality];
 
-      const stream = await navigator.mediaDevices.getDisplayMedia({
+      const displayStream = await navigator.mediaDevices.getDisplayMedia({
         audio: platform !== "darwin",
         video: {
           frameRate: { ideal: qualityPreset.frameRate },
@@ -430,10 +546,10 @@ const ScreenRecorder = () => {
         } as MediaTrackConstraints,
       });
 
-      console.log("Got media stream:", stream);
+      console.log("Got media displayStream:", displayStream);
 
       // Apply quality settings to the video track
-      const videoTrack = stream.getVideoTracks()[0];
+      const videoTrack = displayStream.getVideoTracks()[0];
       const capabilities = videoTrack.getCapabilities();
       console.log("Track capabilities:", capabilities);
 
@@ -447,7 +563,36 @@ const ScreenRecorder = () => {
         console.warn("Couldn't apply all constraints:", e);
       }
 
-      const recorder = new MediaRecorder(stream, {
+      /////////////////////////////////
+      // If microphone is enabled, get microphone stream
+      let finalStream = displayStream;
+      if (includeMic) {
+        try {
+          const micStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              deviceId: selectedMicId ? { exact: selectedMicId } : undefined,
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+            video: false,
+          });
+
+          // Combine display and microphone streams
+          finalStream = new MediaStream([
+            ...displayStream.getVideoTracks(),
+            ...displayStream.getAudioTracks(),
+            ...micStream.getAudioTracks(),
+          ]);
+        } catch (micError) {
+          console.error("Failed to get microphone access:", micError);
+          // Continue with just display audio if mic fails
+        }
+      }
+
+      /////////////////////////////////
+
+      const recorder = new MediaRecorder(finalStream, {
         mimeType: "video/webm;codecs=vp8,opus",
         videoBitsPerSecond: qualityPreset.videoBitsPerSecond,
         audioBitsPerSecond: 128000, // 128 kbps audio
@@ -478,7 +623,7 @@ const ScreenRecorder = () => {
         } catch (error) {
           console.error("Failed to save recording:", error);
         } finally {
-          stream.getTracks().forEach((track) => track.stop());
+          finalStream.getTracks().forEach((track) => track.stop());
           setRecordedChunks([]);
           setMediaRecorder(null);
           setIsRecording(false);
@@ -535,6 +680,43 @@ const ScreenRecorder = () => {
                 {quality === "medium" && "Balanced quality and file size"}
                 {quality === "low" && "Smaller file size, reduced quality"}
               </p>
+            </div>
+
+            {/* Microphone Options */}
+            <div className="mb-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="include-mic"
+                  checked={includeMic}
+                  onChange={(e) => setIncludeMic(e.target.checked)}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="include-mic"
+                  className="text-sm font-medium text-gray-700 flex items-center gap-2"
+                >
+                  <Mic className="w-4 h-4" />
+                  Include Microphone Audio
+                </label>
+              </div>
+
+              {includeMic && micDevices.length > 0 && (
+                <div className="pl-6">
+                  <select
+                    value={selectedMicId}
+                    onChange={(e) => setSelectedMicId(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition-colors"
+                  >
+                    {micDevices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label ||
+                          `Microphone ${device.deviceId.slice(0, 5)}...`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Start/Stop Recording Button */}
