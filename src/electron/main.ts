@@ -131,6 +131,7 @@
 //   ipcMain,
 //   session,
 //   systemPreferences,
+//   screen,
 // } from "electron";
 // import path from "path";
 // import { getPreloadPath } from "./pathResolver.js";
@@ -139,6 +140,8 @@
 
 // let mainWindow: BrowserWindow;
 // let selectedSourceId: string | null = null;
+
+// let cameraWindow: BrowserWindow | null = null; // Window for camera preview
 
 // const createMainWindow = () => {
 //   mainWindow = new BrowserWindow({
@@ -156,6 +159,43 @@
 //       hash: "/",
 //     });
 //   }
+// };
+
+// // Create camera window
+// const createCameraWindow = () => {
+//   // Get the primary display dimensions
+
+//   cameraWindow = new BrowserWindow({
+//     width: 320,
+//     height: 240,
+//     frame: false,
+//     alwaysOnTop: true,
+//     webPreferences: {
+//       preload: getPreloadPath(),
+//     },
+//     transparent: true,
+//     resizable: true,
+//     x: screen.getPrimaryDisplay().workAreaSize.width - 340, // width + 20px padding
+//     y: screen.getPrimaryDisplay().workAreaSize.height - 260, // height + 20px padding
+//   });
+
+//   if (isDev()) {
+//     cameraWindow.loadURL("http://localhost:5173/#/camera");
+//   } else {
+//     cameraWindow.loadFile(
+//       path.join(app.getAppPath(), "dist-react/index.html"),
+//       {
+//         hash: "camera",
+//       }
+//     );
+//   }
+
+//   // Make window draggable
+//   cameraWindow.setVisibleOnAllWorkspaces(true);
+//   // Ensure mouse events work
+//   cameraWindow.setIgnoreMouseEvents(false);
+
+//   return cameraWindow;
 // };
 
 // app.whenReady().then(async () => {
@@ -234,6 +274,46 @@
 //       return filePath;
 //     } catch (error) {
 //       console.error("Failed to save recording:", error);
+//       throw error;
+//     }
+//   });
+
+//   // camera ipc handler
+//   ipcMain.handle("toggleCamera", async (_, show: boolean) => {
+//     if (show) {
+//       if (!cameraWindow) {
+//         createCameraWindow();
+//       }
+//     } else {
+//       cameraWindow?.close();
+//       cameraWindow = null;
+//     }
+//   });
+
+//   // Move camera window
+//   ipcMain.handle("moveWindow", (_, deltaX: number, deltaY: number) => {
+//     if (cameraWindow) {
+//       const [startX, startY] = cameraWindow.getPosition();
+//       cameraWindow.setBounds({
+//         x: startX + Math.round(deltaX),
+//         y: startY + Math.round(deltaY),
+//         width: 320,
+//         height: 240,
+//       });
+//     }
+//   });
+
+//   // Save camera recording
+//   ipcMain.handle("saveCameraRecording", async (_, buffer: Uint8Array) => {
+//     try {
+//       const downloadsPath = app.getPath("downloads");
+//       const fileName = `camera-recording-${Date.now()}.webm`;
+//       const filePath = path.join(downloadsPath, fileName);
+
+//       await fs.promises.writeFile(filePath, buffer);
+//       return filePath;
+//     } catch (error) {
+//       console.error("Failed to save camera recording:", error);
 //       throw error;
 //     }
 //   });
