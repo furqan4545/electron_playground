@@ -163,8 +163,6 @@
 //         }
 //       }
 
-//       /////////////////////////////////
-
 //       const recorder = new MediaRecorder(finalStream, {
 //         mimeType: "video/webm;codecs=vp8,opus",
 //         videoBitsPerSecond: qualityPreset.videoBitsPerSecond,
@@ -589,8 +587,6 @@ const ScreenRecorder = () => {
           // Continue with just display audio if mic fails
         }
       }
-
-      /////////////////////////////////
 
       const recorder = new MediaRecorder(finalStream, {
         mimeType: "video/webm;codecs=vp8,opus",
