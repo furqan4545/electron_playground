@@ -11,6 +11,28 @@
 
 // type TabType = "fullscreen" | "screen";
 
+// // Quality configuration
+// const QUALITY_PRESETS = {
+//   high: {
+//     videoBitsPerSecond: 8000000, // 8 Mbps
+//     frameRate: 60,
+//     width: 3840, // 4K
+//     height: 2160,
+//   },
+//   medium: {
+//     videoBitsPerSecond: 2500000, // 2.5 Mbps
+//     frameRate: 30,
+//     width: 1920, // 1080p
+//     height: 1080,
+//   },
+//   low: {
+//     videoBitsPerSecond: 1000000, // 1 Mbps
+//     frameRate: 30,
+//     width: 1280, // 720p
+//     height: 720,
+//   },
+// };
+
 // const ScreenRecorder = () => {
 //   const [isRecording, setIsRecording] = useState(false);
 //   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
@@ -21,6 +43,8 @@
 //   const [activeTab, setActiveTab] = useState<TabType>("fullscreen");
 //   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
 //   const [platform, setPlatform] = useState<string>("");
+
+//   const [quality, setQuality] = useState<"high" | "medium" | "low">("high");
 
 //   // Get screens and windows separately
 //   const getScreens = () => {
@@ -55,19 +79,42 @@
 //         await (window as any).electron.selectSource(sourceId);
 //       }
 
+//       const qualityPreset = QUALITY_PRESETS[quality];
+
 //       const stream = await navigator.mediaDevices.getDisplayMedia({
 //         audio: platform !== "darwin",
 //         video: {
-//           frameRate: 30,
-//           width: { ideal: 1920 },
-//           height: { ideal: 1080 },
-//         },
+//           frameRate: { ideal: qualityPreset.frameRate },
+//           width: { ideal: qualityPreset.width },
+//           height: { ideal: qualityPreset.height },
+//           // Additional constraints for quality
+//           logicalSurface: true, // Capture logical pixels for higher quality
+//           cursor: "always", // Always show cursor
+//           resizeMode: "crop-and-scale", // Maintain aspect ratio
+//         } as MediaTrackConstraints,
 //       });
 
 //       console.log("Got media stream:", stream);
 
+//       // Apply quality settings to the video track
+//       const videoTrack = stream.getVideoTracks()[0];
+//       const capabilities = videoTrack.getCapabilities();
+//       console.log("Track capabilities:", capabilities);
+
+//       try {
+//         await videoTrack.applyConstraints({
+//           width: { ideal: qualityPreset.width },
+//           height: { ideal: qualityPreset.height },
+//           frameRate: { ideal: qualityPreset.frameRate },
+//         });
+//       } catch (e) {
+//         console.warn("Couldn't apply all constraints:", e);
+//       }
+
 //       const recorder = new MediaRecorder(stream, {
 //         mimeType: "video/webm;codecs=vp8,opus",
+//         videoBitsPerSecond: qualityPreset.videoBitsPerSecond,
+//         audioBitsPerSecond: 128000, // 128 kbps audio
 //       });
 
 //       const chunks: Blob[] = [];
@@ -130,6 +177,31 @@
 //               <Video className="w-6 h-6" />
 //               Screen Recorder
 //             </h2>
+
+//             {/* Quality Selector */}
+//             <div className="mb-4">
+//               <label className="block text-sm font-medium text-gray-700 mb-2">
+//                 Recording Quality
+//               </label>
+//               <select
+//                 value={quality}
+//                 onChange={(e) =>
+//                   setQuality(e.target.value as "high" | "medium" | "low")
+//                 }
+//                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition-colors"
+//               >
+//                 <option value="high">High Quality (4K @ 60fps)</option>
+//                 <option value="medium">Medium Quality (1080p @ 30fps)</option>
+//                 <option value="low">Low Quality (720p @ 30fps)</option>
+//               </select>
+//               <p className="mt-1 text-sm text-gray-500">
+//                 {quality === "high" && "Best quality, larger file size"}
+//                 {quality === "medium" && "Balanced quality and file size"}
+//                 {quality === "low" && "Smaller file size, reduced quality"}
+//               </p>
+//             </div>
+
+//             {/* Start/Stop Recording Button */}
 
 //             <button
 //               onClick={isRecording ? stopRecording : handleStartRecording}
@@ -275,6 +347,28 @@ interface SourceItem {
 
 type TabType = "fullscreen" | "screen";
 
+// Quality configuration
+const QUALITY_PRESETS = {
+  high: {
+    videoBitsPerSecond: 8000000, // 8 Mbps
+    frameRate: 60,
+    width: 3840, // 4K
+    height: 2160,
+  },
+  medium: {
+    videoBitsPerSecond: 2500000, // 2.5 Mbps
+    frameRate: 30,
+    width: 1920, // 1080p
+    height: 1080,
+  },
+  low: {
+    videoBitsPerSecond: 1000000, // 1 Mbps
+    frameRate: 30,
+    width: 1280, // 720p
+    height: 720,
+  },
+};
+
 const ScreenRecorder = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(
@@ -285,6 +379,8 @@ const ScreenRecorder = () => {
   const [activeTab, setActiveTab] = useState<TabType>("fullscreen");
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const [platform, setPlatform] = useState<string>("");
+
+  const [quality, setQuality] = useState<"high" | "medium" | "low">("high");
 
   // Get screens and windows separately
   const getScreens = () => {
@@ -319,19 +415,42 @@ const ScreenRecorder = () => {
         await (window as any).electron.selectSource(sourceId);
       }
 
+      const qualityPreset = QUALITY_PRESETS[quality];
+
       const stream = await navigator.mediaDevices.getDisplayMedia({
         audio: platform !== "darwin",
         video: {
-          frameRate: 30,
-          width: { ideal: 1920 },
-          height: { ideal: 1080 },
-        },
+          frameRate: { ideal: qualityPreset.frameRate },
+          width: { ideal: qualityPreset.width },
+          height: { ideal: qualityPreset.height },
+          // Additional constraints for quality
+          logicalSurface: true, // Capture logical pixels for higher quality
+          cursor: "always", // Always show cursor
+          resizeMode: "crop-and-scale", // Maintain aspect ratio
+        } as MediaTrackConstraints,
       });
 
       console.log("Got media stream:", stream);
 
+      // Apply quality settings to the video track
+      const videoTrack = stream.getVideoTracks()[0];
+      const capabilities = videoTrack.getCapabilities();
+      console.log("Track capabilities:", capabilities);
+
+      try {
+        await videoTrack.applyConstraints({
+          width: { ideal: qualityPreset.width },
+          height: { ideal: qualityPreset.height },
+          frameRate: { ideal: qualityPreset.frameRate },
+        });
+      } catch (e) {
+        console.warn("Couldn't apply all constraints:", e);
+      }
+
       const recorder = new MediaRecorder(stream, {
         mimeType: "video/webm;codecs=vp8,opus",
+        videoBitsPerSecond: qualityPreset.videoBitsPerSecond,
+        audioBitsPerSecond: 128000, // 128 kbps audio
       });
 
       const chunks: Blob[] = [];
@@ -394,6 +513,31 @@ const ScreenRecorder = () => {
               <Video className="w-6 h-6" />
               Screen Recorder
             </h2>
+
+            {/* Quality Selector */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Recording Quality
+              </label>
+              <select
+                value={quality}
+                onChange={(e) =>
+                  setQuality(e.target.value as "high" | "medium" | "low")
+                }
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition-colors"
+              >
+                <option value="high">High Quality (4K @ 60fps)</option>
+                <option value="medium">Medium Quality (1080p @ 30fps)</option>
+                <option value="low">Low Quality (720p @ 30fps)</option>
+              </select>
+              <p className="mt-1 text-sm text-gray-500">
+                {quality === "high" && "Best quality, larger file size"}
+                {quality === "medium" && "Balanced quality and file size"}
+                {quality === "low" && "Smaller file size, reduced quality"}
+              </p>
+            </div>
+
+            {/* Start/Stop Recording Button */}
 
             <button
               onClick={isRecording ? stopRecording : handleStartRecording}
