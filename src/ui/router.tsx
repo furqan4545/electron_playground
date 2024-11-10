@@ -16,6 +16,7 @@
 import { createHashRouter } from "react-router-dom"; // Use HashRouter instead of BrowserRouter
 import ScreenRecorder from "./components/ScreenRecorder";
 import SelectorWindow from "./components/SelectorWindow";
+import CameraWindow from "./components/CameraWindow";
 
 export const router = createHashRouter([
   {
@@ -25,5 +26,9 @@ export const router = createHashRouter([
   {
     path: "/selector",
     element: <SelectorWindow />,
+  },
+  {
+    path: "/camera",
+    element: <CameraWindow />,
   },
 ]);

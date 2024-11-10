@@ -6,18 +6,15 @@ contextBridge.exposeInMainWorld("electron", {
   selectSource: (sourceId: string) =>
     ipcRenderer.invoke("selectSource", sourceId),
 
-  // Start recording with specific source
-  startRecording: (sourceId: string) =>
-    ipcRenderer.invoke("startRecording", sourceId),
-
-  // Stop recording
-  stopRecording: () => ipcRenderer.invoke("stopRecording"),
-
   // Save recording
   saveRecording: (buffer: Uint8Array) =>
     ipcRenderer.invoke("saveRecording", buffer),
   checkScreenPermission: () => ipcRenderer.invoke("checkScreenPermission"),
   getPlatform: () => ipcRenderer.invoke("getPlatform"),
+  toggleCamera: (show: boolean) => ipcRenderer.invoke("toggleCamera", show),
+  saveCameraRecording: (buffer: Uint8Array) =>
+    ipcRenderer.invoke("saveCameraRecording", buffer),
+  moveWindow: (x: number, y: number) => ipcRenderer.invoke("moveWindow", x, y), // Move camera window
 });
 
 declare global {
@@ -33,22 +30,12 @@ declare global {
         }[]
       >;
       selectSource: (sourceId: string) => Promise<boolean>;
-      startRecording: (sourceId: string) => Promise<{
-        sourceId: string;
-        systemAudio: boolean;
-        audioConfig:
-          | false
-          | {
-              mandatory: {
-                chromeMediaSource: "desktop";
-                chromeMediaSourceId: string;
-              };
-            };
-      }>;
-      stopRecording: () => Promise<boolean>;
       saveRecording: (buffer: Uint8Array) => Promise<string>;
       checkScreenPermission: () => Promise<boolean>;
       getPlatform: () => Promise<string>;
+      toggleCamera: (show: boolean) => Promise<void>;
+      saveCameraRecording: (buffer: Uint8Array) => Promise<string>;
+      moveWindow: (x: number, y: number) => Promise<void>; // Move camera window
     };
   }
 }

@@ -475,6 +475,11 @@ const ScreenRecorder = () => {
   const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedMicId, setSelectedMicId] = useState<string>("");
 
+  // Camera controls
+  const [includeCamera, setIncludeCamera] = useState(false);
+  const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+
   // Get screens and windows separately
   const getScreens = () => {
     return sources.filter((source) => source.id.includes("screen:"));
@@ -484,25 +489,48 @@ const ScreenRecorder = () => {
     return sources.filter((source) => source.id.includes("window:"));
   };
 
-  // Get available microphones
+  // get the devices
   useEffect(() => {
-    async function getMicrophones() {
+    async function getDevices() {
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const mics = devices.filter((device) => device.kind === "audioinput");
-        setMicDevices(mics);
+        const cameras = devices.filter(
+          (device) => device.kind === "videoinput"
+        );
 
-        // Set default microphone
-        if (mics.length > 0) {
-          setSelectedMicId(mics[0].deviceId);
-        }
+        setMicDevices(mics);
+        setCameraDevices(cameras);
+
+        if (mics.length > 0) setSelectedMicId(mics[0].deviceId);
+        if (cameras.length > 0) setSelectedCameraId(cameras[0].deviceId);
       } catch (err) {
-        console.error("Error getting microphones:", err);
+        console.error("Error getting devices:", err);
       }
     }
 
-    getMicrophones();
+    getDevices();
   }, []);
+
+  // Get available microphones
+  // useEffect(() => {
+  //   async function getMicrophones() {
+  //     try {
+  //       const devices = await navigator.mediaDevices.enumerateDevices();
+  //       const mics = devices.filter((device) => device.kind === "audioinput");
+  //       setMicDevices(mics);
+
+  //       // Set default microphone
+  //       if (mics.length > 0) {
+  //         setSelectedMicId(mics[0].deviceId);
+  //       }
+  //     } catch (err) {
+  //       console.error("Error getting microphones:", err);
+  //     }
+  //   }
+
+  //   getMicrophones();
+  // }, []);
 
   // Get platform
   useEffect(() => {
@@ -714,6 +742,48 @@ const ScreenRecorder = () => {
                 </div>
               )}
             </div>
+            {/* End Microphone Options */}
+
+            {/* Camera Options */}
+            <div className="mb-6 space-y-4">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="include-camera"
+                  checked={includeCamera}
+                  onChange={(e) => {
+                    setIncludeCamera(e.target.checked);
+                    (window as any).electron.toggleCamera(e.target.checked);
+                  }}
+                  className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                />
+                <label
+                  htmlFor="include-camera"
+                  className="text-sm font-medium text-gray-700 flex items-center gap-2"
+                >
+                  <Video className="w-4 h-4" />
+                  Include Camera Video
+                </label>
+              </div>
+
+              {includeCamera && cameraDevices.length > 0 && (
+                <div className="pl-6">
+                  <select
+                    value={selectedCameraId}
+                    onChange={(e) => setSelectedCameraId(e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition-colors"
+                  >
+                    {cameraDevices.map((device) => (
+                      <option key={device.deviceId} value={device.deviceId}>
+                        {device.label ||
+                          `Camera ${device.deviceId.slice(0, 5)}...`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+            {/* End Camera Options */}
 
             {/* Start/Stop Recording Button */}
 
