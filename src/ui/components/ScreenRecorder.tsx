@@ -55,6 +55,42 @@
 //   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
 //   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
 
+//   // Camera recording
+//   const [cameraRecorder, setCameraRecorder] = useState<MediaRecorder | null>(
+//     null
+//   );
+//   const [cameraChunks, setCameraChunks] = useState<Blob[]>([]);
+
+//   const [recordedFiles, setRecordedFiles] = useState<{
+//     screen?: string;
+//     camera?: string;
+//   }>({});
+
+//   const handleCameraRecordingSave = (filePath: string) => {
+//     setRecordedFiles((prev) => ({
+//       ...prev,
+//       camera: filePath,
+//     }));
+//   };
+
+//   const handleScreenRecordingSave = (filePath: string) => {
+//     setRecordedFiles((prev) => ({
+//       ...prev,
+//       screen: filePath,
+//     }));
+//   };
+
+//   // When both recordings are saved
+//   useEffect(() => {
+//     if (recordedFiles.screen && recordedFiles.camera) {
+//       console.log("Both recordings saved:");
+//       console.log("Screen:", recordedFiles.screen);
+//       console.log("Camera:", recordedFiles.camera);
+//       // Reset for next recording
+//       setRecordedFiles({});
+//     }
+//   }, [recordedFiles]);
+
 //   // Get screens and windows separately
 //   const getScreens = () => {
 //     return sources.filter((source) => source.id.includes("screen:"));
@@ -191,6 +227,59 @@
 //         }
 //       }
 
+//       /////////////////////////////////
+//       // Camera recording begin
+//       if (includeCamera) {
+//         try {
+//           const cameraStream = await navigator.mediaDevices.getUserMedia({
+//             video: {
+//               deviceId: selectedCameraId
+//                 ? { exact: selectedCameraId }
+//                 : undefined,
+//             },
+//             audio: false,
+//           });
+
+//           const camRecorder = new MediaRecorder(cameraStream, {
+//             mimeType: "video/webm;codecs=vp8",
+//             videoBitsPerSecond: 1000000,
+//           });
+
+//           const camChunks: Blob[] = [];
+
+//           camRecorder.ondataavailable = (e) => {
+//             if (e.data.size > 0) {
+//               camChunks.push(e.data);
+//               setCameraChunks((prev) => [...prev, e.data]);
+//             }
+//           };
+
+//           camRecorder.onstop = async () => {
+//             try {
+//               const blob = new Blob(camChunks, { type: "video/webm" });
+//               const buffer = await blob.arrayBuffer();
+//               const filePath = await (
+//                 window as any
+//               ).electron.saveCameraRecording(new Uint8Array(buffer));
+//               console.log("Camera recording saved to:", filePath);
+//               handleCameraRecordingSave(filePath);
+//             } catch (error) {
+//               console.error("Failed to save camera recording:", error);
+//             } finally {
+//               cameraStream.getTracks().forEach((track) => track.stop());
+//               setCameraChunks([]);
+//               setCameraRecorder(null);
+//             }
+//           };
+
+//           camRecorder.start(1000);
+//           setCameraRecorder(camRecorder);
+//         } catch (error) {
+//           console.error("Failed to start camera recording:", error);
+//         }
+//       }
+//       ///////////////////////////////// camera recording above ///////
+
 //       const recorder = new MediaRecorder(finalStream, {
 //         mimeType: "video/webm;codecs=vp8,opus",
 //         videoBitsPerSecond: qualityPreset.videoBitsPerSecond,
@@ -219,6 +308,7 @@
 //             uint8Array
 //           );
 //           console.log("Recording saved to:", filePath);
+//           handleScreenRecordingSave(filePath); // Add this line
 //         } catch (error) {
 //           console.error("Failed to save recording:", error);
 //         } finally {
@@ -241,10 +331,18 @@
 //   };
 
 //   const stopRecording = async () => {
+//     // Stop screen recording
 //     if (mediaRecorder && mediaRecorder.state !== "inactive") {
 //       mediaRecorder.requestData();
 //       await new Promise((resolve) => setTimeout(resolve, 1000));
 //       mediaRecorder.stop();
+//     }
+
+//     // Stop camera recording
+//     if (cameraRecorder && cameraRecorder.state !== "inactive") {
+//       cameraRecorder.requestData();
+//       await new Promise((resolve) => setTimeout(resolve, 1000));
+//       cameraRecorder.stop();
 //     }
 //   };
 
@@ -490,12 +588,13 @@
 
 // export default ScreenRecorder;
 
+// export default ScreenRecorder;
+
 ////////////////////////////
 ///////////////////////////
 
 import React, { useEffect, useState } from "react";
 import { Video, Monitor, X, Maximize, Mic } from "lucide-react";
-import CameraWindow from "./CameraWindow";
 
 interface SourceItem {
   id: string;
