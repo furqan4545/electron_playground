@@ -50,6 +50,11 @@
 //   const [micDevices, setMicDevices] = useState<MediaDeviceInfo[]>([]);
 //   const [selectedMicId, setSelectedMicId] = useState<string>("");
 
+//   // Camera controls
+//   const [includeCamera, setIncludeCamera] = useState(false);
+//   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
+//   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+
 //   // Get screens and windows separately
 //   const getScreens = () => {
 //     return sources.filter((source) => source.id.includes("screen:"));
@@ -59,25 +64,48 @@
 //     return sources.filter((source) => source.id.includes("window:"));
 //   };
 
-//   // Get available microphones
+//   // get the devices
 //   useEffect(() => {
-//     async function getMicrophones() {
+//     async function getDevices() {
 //       try {
 //         const devices = await navigator.mediaDevices.enumerateDevices();
 //         const mics = devices.filter((device) => device.kind === "audioinput");
-//         setMicDevices(mics);
+//         const cameras = devices.filter(
+//           (device) => device.kind === "videoinput"
+//         );
 
-//         // Set default microphone
-//         if (mics.length > 0) {
-//           setSelectedMicId(mics[0].deviceId);
-//         }
+//         setMicDevices(mics);
+//         setCameraDevices(cameras);
+
+//         if (mics.length > 0) setSelectedMicId(mics[0].deviceId);
+//         if (cameras.length > 0) setSelectedCameraId(cameras[0].deviceId);
 //       } catch (err) {
-//         console.error("Error getting microphones:", err);
+//         console.error("Error getting devices:", err);
 //       }
 //     }
 
-//     getMicrophones();
+//     getDevices();
 //   }, []);
+
+//   // Get available microphones
+//   // useEffect(() => {
+//   //   async function getMicrophones() {
+//   //     try {
+//   //       const devices = await navigator.mediaDevices.enumerateDevices();
+//   //       const mics = devices.filter((device) => device.kind === "audioinput");
+//   //       setMicDevices(mics);
+
+//   //       // Set default microphone
+//   //       if (mics.length > 0) {
+//   //         setSelectedMicId(mics[0].deviceId);
+//   //       }
+//   //     } catch (err) {
+//   //       console.error("Error getting microphones:", err);
+//   //     }
+//   //   }
+
+//   //   getMicrophones();
+//   // }, []);
 
 //   // Get platform
 //   useEffect(() => {
@@ -289,6 +317,48 @@
 //                 </div>
 //               )}
 //             </div>
+//             {/* End Microphone Options */}
+
+//             {/* Camera Options */}
+//             <div className="mb-6 space-y-4">
+//               <div className="flex items-center gap-2">
+//                 <input
+//                   type="checkbox"
+//                   id="include-camera"
+//                   checked={includeCamera}
+//                   onChange={(e) => {
+//                     setIncludeCamera(e.target.checked);
+//                     (window as any).electron.toggleCamera(e.target.checked);
+//                   }}
+//                   className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+//                 />
+//                 <label
+//                   htmlFor="include-camera"
+//                   className="text-sm font-medium text-gray-700 flex items-center gap-2"
+//                 >
+//                   <Video className="w-4 h-4" />
+//                   Include Camera Video
+//                 </label>
+//               </div>
+
+//               {includeCamera && cameraDevices.length > 0 && (
+//                 <div className="pl-6">
+//                   <select
+//                     value={selectedCameraId}
+//                     onChange={(e) => setSelectedCameraId(e.target.value)}
+//                     className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm transition-colors"
+//                   >
+//                     {cameraDevices.map((device) => (
+//                       <option key={device.deviceId} value={device.deviceId}>
+//                         {device.label ||
+//                           `Camera ${device.deviceId.slice(0, 5)}...`}
+//                       </option>
+//                     ))}
+//                   </select>
+//                 </div>
+//               )}
+//             </div>
+//             {/* End Camera Options */}
 
 //             {/* Start/Stop Recording Button */}
 
@@ -425,6 +495,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Video, Monitor, X, Maximize, Mic } from "lucide-react";
+import CameraWindow from "./CameraWindow";
 
 interface SourceItem {
   id: string;
@@ -479,6 +550,42 @@ const ScreenRecorder = () => {
   const [includeCamera, setIncludeCamera] = useState(false);
   const [cameraDevices, setCameraDevices] = useState<MediaDeviceInfo[]>([]);
   const [selectedCameraId, setSelectedCameraId] = useState<string>("");
+
+  // Camera recording
+  const [cameraRecorder, setCameraRecorder] = useState<MediaRecorder | null>(
+    null
+  );
+  const [cameraChunks, setCameraChunks] = useState<Blob[]>([]);
+
+  const [recordedFiles, setRecordedFiles] = useState<{
+    screen?: string;
+    camera?: string;
+  }>({});
+
+  const handleCameraRecordingSave = (filePath: string) => {
+    setRecordedFiles((prev) => ({
+      ...prev,
+      camera: filePath,
+    }));
+  };
+
+  const handleScreenRecordingSave = (filePath: string) => {
+    setRecordedFiles((prev) => ({
+      ...prev,
+      screen: filePath,
+    }));
+  };
+
+  // When both recordings are saved
+  useEffect(() => {
+    if (recordedFiles.screen && recordedFiles.camera) {
+      console.log("Both recordings saved:");
+      console.log("Screen:", recordedFiles.screen);
+      console.log("Camera:", recordedFiles.camera);
+      // Reset for next recording
+      setRecordedFiles({});
+    }
+  }, [recordedFiles]);
 
   // Get screens and windows separately
   const getScreens = () => {
@@ -616,6 +723,59 @@ const ScreenRecorder = () => {
         }
       }
 
+      /////////////////////////////////
+      // Camera recording begin
+      if (includeCamera) {
+        try {
+          const cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+              deviceId: selectedCameraId
+                ? { exact: selectedCameraId }
+                : undefined,
+            },
+            audio: false,
+          });
+
+          const camRecorder = new MediaRecorder(cameraStream, {
+            mimeType: "video/webm;codecs=vp8",
+            videoBitsPerSecond: 1000000,
+          });
+
+          const camChunks: Blob[] = [];
+
+          camRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              camChunks.push(e.data);
+              setCameraChunks((prev) => [...prev, e.data]);
+            }
+          };
+
+          camRecorder.onstop = async () => {
+            try {
+              const blob = new Blob(camChunks, { type: "video/webm" });
+              const buffer = await blob.arrayBuffer();
+              const filePath = await (
+                window as any
+              ).electron.saveCameraRecording(new Uint8Array(buffer));
+              console.log("Camera recording saved to:", filePath);
+              handleCameraRecordingSave(filePath);
+            } catch (error) {
+              console.error("Failed to save camera recording:", error);
+            } finally {
+              cameraStream.getTracks().forEach((track) => track.stop());
+              setCameraChunks([]);
+              setCameraRecorder(null);
+            }
+          };
+
+          camRecorder.start(1000);
+          setCameraRecorder(camRecorder);
+        } catch (error) {
+          console.error("Failed to start camera recording:", error);
+        }
+      }
+      ///////////////////////////////// camera recording above ///////
+
       const recorder = new MediaRecorder(finalStream, {
         mimeType: "video/webm;codecs=vp8,opus",
         videoBitsPerSecond: qualityPreset.videoBitsPerSecond,
@@ -644,6 +804,7 @@ const ScreenRecorder = () => {
             uint8Array
           );
           console.log("Recording saved to:", filePath);
+          handleScreenRecordingSave(filePath); // Add this line
         } catch (error) {
           console.error("Failed to save recording:", error);
         } finally {
@@ -666,10 +827,18 @@ const ScreenRecorder = () => {
   };
 
   const stopRecording = async () => {
+    // Stop screen recording
     if (mediaRecorder && mediaRecorder.state !== "inactive") {
       mediaRecorder.requestData();
       await new Promise((resolve) => setTimeout(resolve, 1000));
       mediaRecorder.stop();
+    }
+
+    // Stop camera recording
+    if (cameraRecorder && cameraRecorder.state !== "inactive") {
+      cameraRecorder.requestData();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      cameraRecorder.stop();
     }
   };
 
