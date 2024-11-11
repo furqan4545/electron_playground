@@ -387,7 +387,27 @@ const createCameraWindow = () => {
     resizable: true,
     x: screen.getPrimaryDisplay().workAreaSize.width - 340, // width + 20px padding
     y: screen.getPrimaryDisplay().workAreaSize.height - 260, // height + 20px padding
+    focusable: true,
+    skipTaskbar: true,
   });
+
+  ///////////////////////////////////////////////////////////////
+  // Set window to be excluded from screen capture
+  if (process.platform === "darwin") {
+    // For macOS
+    cameraWindow.setWindowButtonVisibility(false);
+    // @ts-ignore - This method exists but might not be in the types
+    cameraWindow.setVisibleOnAllWorkspaces(true, {
+      visibleOnFullScreen: true,
+      skipTransformProcessType: true,
+    });
+  }
+
+  // Use the actual API to exclude from capture
+  if (cameraWindow.setContentProtection) {
+    cameraWindow.setContentProtection(true);
+  }
+  ///////////////////////////////////////////////////////////////
 
   if (isDev()) {
     cameraWindow.loadURL("http://localhost:5173/#/camera");
