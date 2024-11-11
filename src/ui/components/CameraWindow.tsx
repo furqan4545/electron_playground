@@ -254,8 +254,8 @@ const CameraWindow = ({
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            width: 320,
-            height: 240,
+            width: 1480,
+            height: 1480,
             deviceId: selectedCameraId
               ? { exact: selectedCameraId }
               : undefined,
@@ -379,8 +379,12 @@ const CameraWindow = ({
         WebkitAppRegion: "drag",
         // @ts-ignore
         WebkitDragRegion: "drag",
-        minWidth: "160px", // Minimum width
-        minHeight: "120px", // Minimum height
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "transparent",
       }}
     >
       <video
@@ -393,9 +397,9 @@ const CameraWindow = ({
           pointerEvents: "none",
           objectFit: "cover",
           objectPosition: "center center",
-          transform: "translateX(-50%) scale(1.15)", // Initial centering and slight scale
-          left: "50%",
+          transform: "translateX(-5%) translateY(-5%) scale(1.4)",
           position: "relative",
+          overflow: "hidden",
         }}
       />
       {isRecording && (

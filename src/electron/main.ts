@@ -376,8 +376,8 @@ const createCameraWindow = () => {
   // Get the primary display dimensions
 
   cameraWindow = new BrowserWindow({
-    width: 320,
-    height: 240,
+    width: 160,
+    height: 160,
     frame: false,
     alwaysOnTop: true,
     webPreferences: {
@@ -385,11 +385,17 @@ const createCameraWindow = () => {
     },
     transparent: true,
     resizable: true,
-    x: screen.getPrimaryDisplay().workAreaSize.width - 340, // width + 20px padding
-    y: screen.getPrimaryDisplay().workAreaSize.height - 260, // height + 20px padding
+    x: screen.getPrimaryDisplay().workAreaSize.width - 190, // width + 20px padding
+    y: screen.getPrimaryDisplay().workAreaSize.height - 160, // height + 20px padding
     focusable: true,
     skipTaskbar: true,
   });
+
+  // test // After window creation, make it circular
+  // cameraWindow.setShape([
+  //   { x: 110, y: 0, width: 1, height: 1 }, // This creates a circular mask
+  // ]);
+  // test
 
   ///////////////////////////////////////////////////////////////
   // Set window to be excluded from screen capture
@@ -527,8 +533,8 @@ app.whenReady().then(async () => {
       cameraWindow.setBounds({
         x: startX + Math.round(deltaX),
         y: startY + Math.round(deltaY),
-        width: 320,
-        height: 240,
+        width: 160,
+        height: 160,
       });
     }
   });
