@@ -3,16 +3,21 @@
 // interface CameraWindowProps {
 //   isMainRecording?: boolean; // Prop to sync with main recording state
 //   selectedCameraId?: string; // Optional camera device selection
+//   onRecordingStart?: () => void;
+//   onRecordingSave?: (filePath: string) => void;
 // }
 
 // const CameraWindow = ({
 //   isMainRecording = false,
 //   selectedCameraId,
+//   onRecordingStart,
+//   onRecordingSave,
 // }: CameraWindowProps) => {
 //   const videoRef = useRef<HTMLVideoElement>(null);
 //   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
 //   const [chunks, setChunks] = useState<Blob[]>([]);
 //   const [isRecording, setIsRecording] = useState(false);
+//   const startTimeRef = useRef<number | null>(null);
 
 //   // Add ref for the container
 //   const containerRef = useRef<HTMLDivElement>(null);
@@ -71,9 +76,9 @@
 
 //   // Handle recording based on main recording state
 //   useEffect(() => {
-//     if (isMainRecording) {
+//     if (isMainRecording && !isRecording) {
 //       startRecording();
-//     } else if (isRecording) {
+//     } else if (!isMainRecording && isRecording) {
 //       stopRecording();
 //     }
 //   }, [isMainRecording]);
@@ -81,50 +86,66 @@
 //   const startRecording = () => {
 //     if (!videoRef.current?.srcObject) return;
 
-//     const recorder = new MediaRecorder(
-//       videoRef.current.srcObject as MediaStream,
-//       {
-//         mimeType: "video/webm;codecs=vp8",
-//         videoBitsPerSecond: 1000000, // 1 Mbps
-//       }
-//     );
+//     try {
+//       const recorder = new MediaRecorder(
+//         videoRef.current.srcObject as MediaStream,
+//         {
+//           mimeType: "video/webm;codecs=vp8",
+//           videoBitsPerSecond: 1000000, // 1 Mbps
+//         }
+//       );
 
-//     const recordedChunks: Blob[] = [];
+//       const recordedChunks: Blob[] = [];
 
-//     recorder.ondataavailable = (e) => {
-//       if (e.data.size > 0) {
-//         recordedChunks.push(e.data);
-//         setChunks((prev) => [...prev, e.data]);
-//       }
-//     };
+//       recorder.ondataavailable = (e) => {
+//         if (e.data.size > 0) {
+//           recordedChunks.push(e.data);
+//           setChunks((prev) => [...prev, e.data]);
+//         }
+//       };
 
-//     recorder.onstop = async () => {
-//       try {
-//         const blob = new Blob(recordedChunks, { type: "video/webm" });
-//         const buffer = await blob.arrayBuffer();
-//         await (window as any).electron.saveCameraRecording(
-//           new Uint8Array(buffer)
-//         );
-//         console.log("Camera recording saved");
-//       } catch (error) {
-//         console.error("Failed to save camera recording:", error);
-//       } finally {
-//         setChunks([]);
-//         setIsRecording(false);
-//       }
-//     };
+//       recorder.onstop = async () => {
+//         try {
+//           const blob = new Blob(recordedChunks, { type: "video/webm" });
+//           const buffer = await blob.arrayBuffer();
+//           const filePath = await (window as any).electron.saveCameraRecording(
+//             new Uint8Array(buffer)
+//           );
+//           console.log("Camera recording saved to:", filePath);
+//           onRecordingSave?.(filePath); // Call the callback with the file path
+//         } catch (error) {
+//           console.error("Failed to save camera recording:", error);
+//         } finally {
+//           setChunks([]);
+//           setIsRecording(false);
+//           startTimeRef.current = null;
+//         }
+//       };
 
-//     recorder.start(1000);
-//     mediaRecorderRef.current = recorder;
-//     setIsRecording(true);
+//       startTimeRef.current = Date.now(); // Set start time
+//       recorder.start(1000);
+//       mediaRecorderRef.current = recorder;
+//       setIsRecording(true);
+//       onRecordingStart?.(); // Call the callback when recording starts
+
+//       console.log("Camera recording started at:", new Date().toISOString());
+//     } catch (error) {
+//       console.error("Failed to start camera recording:", error);
+//       setIsRecording(false);
+//     }
 //   };
 
-//   const stopRecording = () => {
+//   const stopRecording = async () => {
 //     if (mediaRecorderRef.current?.state !== "inactive") {
-//       mediaRecorderRef.current?.requestData(); // Get the last chunk
-//       setTimeout(() => {
-//         mediaRecorderRef.current?.stop();
-//       }, 100);
+//       const endTime = Date.now();
+//       const duration = startTimeRef.current
+//         ? endTime - startTimeRef.current
+//         : 0;
+//       console.log(`Camera recording duration: ${duration}ms`);
+
+//       mediaRecorderRef.current?.requestData();
+//       await new Promise((resolve) => setTimeout(resolve, 100));
+//       mediaRecorderRef.current?.stop();
 //     }
 //   };
 
