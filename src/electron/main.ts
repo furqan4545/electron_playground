@@ -143,6 +143,28 @@
 
 // let cameraWindow: BrowserWindow | null = null; // Window for camera preview
 
+// // Add cursor tracking interfaces
+// interface CursorPosition {
+//   x: number;
+//   y: number;
+//   timestamp: number;
+//   type: "move" | "click";
+//   display: {
+//     id: number;
+//     bounds: {
+//       x: number;
+//       y: number;
+//       width: number;
+//       height: number;
+//     };
+//   };
+// }
+
+// // Add cursor tracking variables
+// let cursorTrackingInterval: NodeJS.Timeout | null = null;
+// let trackingData: CursorPosition[] = [];
+// let startTime: number = 0;
+
 // const createMainWindow = () => {
 //   mainWindow = new BrowserWindow({
 //     width: 800,
@@ -343,9 +365,108 @@
 //       throw error;
 //     }
 //   });
+
+//   // Add cursor tracking IPC handlers
+//   ipcMain.handle("startCursorTracking", () => {
+//     console.log("Starting cursor tracking...");
+//     trackingData = [];
+//     startTime = Date.now();
+
+//     cursorTrackingInterval = setInterval(() => {
+//       const point = screen.getCursorScreenPoint();
+//       const displays = screen.getAllDisplays();
+
+//       // Find which display the cursor is currently on
+//       const currentDisplay = displays.find((display) => {
+//         const { x, y, width, height } = display.bounds;
+//         return (
+//           point.x >= x &&
+//           point.x <= x + width &&
+//           point.y >= y &&
+//           point.y <= y + height
+//         );
+//       });
+
+//       if (currentDisplay) {
+//         trackingData.push({
+//           x: point.x,
+//           y: point.y,
+//           timestamp: Date.now() - startTime,
+//           type: "move",
+//           display: {
+//             id: currentDisplay.id,
+//             bounds: currentDisplay.bounds,
+//           },
+//         });
+//       }
+//     }, 1000 / 30); // 30fps
+
+//     return true;
+//   });
+
+//   // Stop cursor tracking
+//   ipcMain.handle("stopCursorTracking", async () => {
+//     console.log("Stopping cursor tracking...");
+
+//     if (cursorTrackingInterval) {
+//       clearInterval(cursorTrackingInterval);
+//       cursorTrackingInterval = null;
+//     }
+
+//     const endTime = Date.now();
+//     const duration = endTime - startTime;
+
+//     const cursorData = {
+//       recording_start_time: startTime,
+//       recording_duration: duration,
+//       frame_rate: 30,
+//       screen_info: {
+//         displays: screen.getAllDisplays().map((display) => ({
+//           id: display.id,
+//           bounds: display.bounds,
+//           workArea: display.workArea,
+//           scaleFactor: display.scaleFactor,
+//           rotation: display.rotation,
+//           internal: display.internal,
+//         })),
+//       },
+//       tracking_data: trackingData,
+//     };
+
+//     try {
+//       const downloadsPath = app.getPath("downloads");
+//       const fileName = `cursor-data-${Date.now()}.json`;
+//       const filePath = path.join(downloadsPath, fileName);
+
+//       await fs.promises.writeFile(
+//         filePath,
+//         JSON.stringify(cursorData, null, 2),
+//         "utf-8"
+//       );
+
+//       console.log("Cursor data saved to:", filePath);
+//       trackingData = []; // Clear the data
+//       return filePath;
+//     } catch (error) {
+//       console.error("Error saving cursor data:", error);
+//       throw error;
+//     }
+//   });
 // });
 
+// // app.on("window-all-closed", () => {
+// //   if (process.platform !== "darwin") {
+// //     app.quit();
+// //   }
+// // });
+
+// // Add cleanup for cursor tracking
 // app.on("window-all-closed", () => {
+//   if (cursorTrackingInterval) {
+//     clearInterval(cursorTrackingInterval);
+//     cursorTrackingInterval = null;
+//   }
+
 //   if (process.platform !== "darwin") {
 //     app.quit();
 //   }
@@ -378,6 +499,28 @@ let mainWindow: BrowserWindow;
 let selectedSourceId: string | null = null;
 
 let cameraWindow: BrowserWindow | null = null; // Window for camera preview
+
+// Add cursor tracking interfaces
+interface CursorPosition {
+  x: number;
+  y: number;
+  timestamp: number;
+  type: "move" | "click";
+  display: {
+    id: number;
+    bounds: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
+  };
+}
+
+// Add cursor tracking variables
+let cursorTrackingInterval: NodeJS.Timeout | null = null;
+let trackingData: CursorPosition[] = [];
+let startTime: number = 0;
 
 const createMainWindow = () => {
   mainWindow = new BrowserWindow({
@@ -579,9 +722,102 @@ app.whenReady().then(async () => {
       throw error;
     }
   });
+
+  // Add cursor tracking IPC handlers
+  ipcMain.handle("startCursorTracking", () => {
+    console.log("Starting cursor tracking...");
+    trackingData = [];
+    startTime = Date.now();
+
+    cursorTrackingInterval = setInterval(() => {
+      const point = screen.getCursorScreenPoint();
+      const displays = screen.getAllDisplays();
+
+      // Find which display the cursor is currently on
+      const currentDisplay = displays.find((display) => {
+        const { x, y, width, height } = display.bounds;
+        return (
+          point.x >= x &&
+          point.x <= x + width &&
+          point.y >= y &&
+          point.y <= y + height
+        );
+      });
+
+      if (currentDisplay) {
+        trackingData.push({
+          x: point.x,
+          y: point.y,
+          timestamp: Date.now() - startTime,
+          type: "move",
+          display: {
+            id: currentDisplay.id,
+            bounds: currentDisplay.bounds,
+          },
+        });
+      }
+    }, 1000 / 30); // 30fps
+
+    return true;
+  });
+
+  // Stop cursor tracking
+  ipcMain.handle("stopCursorTracking", async () => {
+    console.log("Stopping cursor tracking...");
+
+    if (cursorTrackingInterval) {
+      clearInterval(cursorTrackingInterval);
+      cursorTrackingInterval = null;
+    }
+
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+
+    const cursorData = {
+      recording_start_time: startTime,
+      recording_duration: duration,
+      frame_rate: 30,
+      screen_info: {
+        displays: screen.getAllDisplays().map((display) => ({
+          id: display.id,
+          bounds: display.bounds,
+          workArea: display.workArea,
+          scaleFactor: display.scaleFactor,
+          rotation: display.rotation,
+          internal: display.internal,
+        })),
+      },
+      tracking_data: trackingData,
+    };
+
+    try {
+      const downloadsPath = app.getPath("downloads");
+      const fileName = `cursor-data-${Date.now()}.json`;
+      const filePath = path.join(downloadsPath, fileName);
+
+      await fs.promises.writeFile(
+        filePath,
+        JSON.stringify(cursorData, null, 2),
+        "utf-8"
+      );
+
+      console.log("Cursor data saved to:", filePath);
+      trackingData = []; // Clear the data
+      return filePath;
+    } catch (error) {
+      console.error("Error saving cursor data:", error);
+      throw error;
+    }
+  });
 });
 
+// Add cleanup for cursor tracking
 app.on("window-all-closed", () => {
+  if (cursorTrackingInterval) {
+    clearInterval(cursorTrackingInterval);
+    cursorTrackingInterval = null;
+  }
+
   if (process.platform !== "darwin") {
     app.quit();
   }

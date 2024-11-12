@@ -1,4 +1,4 @@
-// import React, { useEffect, useState } from "react";
+// import React, { useCallback, useEffect, useState } from "react";
 // import { Video, Monitor, X, Maximize, Mic } from "lucide-react";
 
 // interface SourceItem {
@@ -64,6 +64,7 @@
 //   const [recordedFiles, setRecordedFiles] = useState<{
 //     screen?: string;
 //     camera?: string;
+//     cursorData?: string;
 //   }>({});
 
 //   const handleCameraRecordingSave = (filePath: string) => {
@@ -80,14 +81,37 @@
 //     }));
 //   };
 
-//   // When both recordings are saved
+//   // Add this effect to clean up states when component unmounts.. for cursor data
+//   useEffect(() => {
+//     return () => {
+//       setIsRecording(false);
+
+//       if (mediaRecorder) {
+//         mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+//       }
+//       if (cameraRecorder) {
+//         cameraRecorder.stream.getTracks().forEach((track) => track.stop());
+//       }
+//     };
+//   }, []);
+
+//   // // When both recordings are saved
+//   // useEffect(() => {
+//   //   if (recordedFiles.screen && recordedFiles.camera) {
+//   //     console.log("Both recordings saved:");
+//   //     console.log("Screen:", recordedFiles.screen);
+//   //     console.log("Camera:", recordedFiles.camera);
+//   //     // Reset for next recording
+//   //     setRecordedFiles({});
+//   //   }
+//   // }, [recordedFiles]);
+
+//   // Add this effect to monitor recordedFiles changes
 //   useEffect(() => {
 //     if (recordedFiles.screen && recordedFiles.camera) {
-//       console.log("Both recordings saved:");
-//       console.log("Screen:", recordedFiles.screen);
-//       console.log("Camera:", recordedFiles.camera);
-//       // Reset for next recording
-//       setRecordedFiles({});
+//       console.log("All recordings saved:", recordedFiles);
+//       // Handle completion here if needed
+//       setRecordedFiles({}); // Reset for next recording
 //     }
 //   }, [recordedFiles]);
 
@@ -123,26 +147,6 @@
 //     getDevices();
 //   }, []);
 
-//   // Get available microphones
-//   // useEffect(() => {
-//   //   async function getMicrophones() {
-//   //     try {
-//   //       const devices = await navigator.mediaDevices.enumerateDevices();
-//   //       const mics = devices.filter((device) => device.kind === "audioinput");
-//   //       setMicDevices(mics);
-
-//   //       // Set default microphone
-//   //       if (mics.length > 0) {
-//   //         setSelectedMicId(mics[0].deviceId);
-//   //       }
-//   //     } catch (err) {
-//   //       console.error("Error getting microphones:", err);
-//   //     }
-//   //   }
-
-//   //   getMicrophones();
-//   // }, []);
-
 //   // Get platform
 //   useEffect(() => {
 //     // Get platform on component mount
@@ -163,6 +167,10 @@
 //   const startRecordingSource = async (sourceId?: string) => {
 //     try {
 //       console.log("Starting recording for source:", sourceId);
+
+//       // Start cursor tracking first
+//       console.log("Starting cursor tracking...");
+//       await (window as any).electron.startCursorTracking();
 
 //       if (sourceId) {
 //         await (window as any).electron.selectSource(sourceId);
@@ -322,27 +330,61 @@
 //       recorder.start(1000);
 //       setMediaRecorder(recorder);
 //       setIsRecording(true);
+
 //       setShowPicker(false);
 //     } catch (error) {
 //       console.error("Failed to start recording:", error);
+//       try {
+//         await (window as any).electron.stopCursorTracking();
+//       } catch (e) {
+//         console.error("Failed to stop cursor tracking after error:", e);
+//       }
 //       setIsRecording(false);
 //       setShowPicker(false);
 //     }
 //   };
 
 //   const stopRecording = async () => {
-//     // Stop screen recording
-//     if (mediaRecorder && mediaRecorder.state !== "inactive") {
-//       mediaRecorder.requestData();
-//       await new Promise((resolve) => setTimeout(resolve, 1000));
-//       mediaRecorder.stop();
-//     }
+//     console.log("Stopping all recordings...");
 
-//     // Stop camera recording
-//     if (cameraRecorder && cameraRecorder.state !== "inactive") {
-//       cameraRecorder.requestData();
-//       await new Promise((resolve) => setTimeout(resolve, 1000));
-//       cameraRecorder.stop();
+//     try {
+//       // Stop recordings in sequence with proper timing
+//       const stopSequence = async () => {
+//         // 1. Stop cursor tracking first
+//         console.log("Stopping cursor tracking...");
+//         const cursorDataPath = await (
+//           window as any
+//         ).electron.stopCursorTracking();
+
+//         // Update recorded files with cursor data path
+//         setRecordedFiles((prev) => ({
+//           ...prev,
+//           cursorData: cursorDataPath,
+//         }));
+
+//         // 2. Stop screen recording
+//         if (mediaRecorder && mediaRecorder.state !== "inactive") {
+//           console.log("Stopping screen recording...");
+//           mediaRecorder.requestData();
+//           await new Promise((resolve) => setTimeout(resolve, 1000));
+//           mediaRecorder.stop();
+//         }
+
+//         // 3. Stop camera recording
+//         if (cameraRecorder && cameraRecorder.state !== "inactive") {
+//           console.log("Stopping camera recording...");
+//           cameraRecorder.requestData();
+//           await new Promise((resolve) => setTimeout(resolve, 1000));
+//           cameraRecorder.stop();
+//         }
+//       };
+
+//       await stopSequence();
+//       setIsRecording(false);
+//     } catch (error) {
+//       console.error("Error stopping recordings:", error);
+//       // Ensure we still set recording state to false even if there's an error
+//       setIsRecording(false);
 //     }
 //   };
 
@@ -459,7 +501,6 @@
 //             {/* End Camera Options */}
 
 //             {/* Start/Stop Recording Button */}
-
 //             <button
 //               onClick={isRecording ? stopRecording : handleStartRecording}
 //               className={`w-full py-3 px-4 rounded-md flex items-center justify-center gap-2 text-white font-medium ${
@@ -588,12 +629,10 @@
 
 // export default ScreenRecorder;
 
-// export default ScreenRecorder;
-
 ////////////////////////////
 ///////////////////////////
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Video, Monitor, X, Maximize, Mic } from "lucide-react";
 
 interface SourceItem {
@@ -659,6 +698,7 @@ const ScreenRecorder = () => {
   const [recordedFiles, setRecordedFiles] = useState<{
     screen?: string;
     camera?: string;
+    cursorData?: string;
   }>({});
 
   const handleCameraRecordingSave = (filePath: string) => {
@@ -675,14 +715,37 @@ const ScreenRecorder = () => {
     }));
   };
 
-  // When both recordings are saved
+  // Add this effect to clean up states when component unmounts.. for cursor data
+  useEffect(() => {
+    return () => {
+      setIsRecording(false);
+
+      if (mediaRecorder) {
+        mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+      }
+      if (cameraRecorder) {
+        cameraRecorder.stream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, []);
+
+  // // When both recordings are saved
+  // useEffect(() => {
+  //   if (recordedFiles.screen && recordedFiles.camera) {
+  //     console.log("Both recordings saved:");
+  //     console.log("Screen:", recordedFiles.screen);
+  //     console.log("Camera:", recordedFiles.camera);
+  //     // Reset for next recording
+  //     setRecordedFiles({});
+  //   }
+  // }, [recordedFiles]);
+
+  // Add this effect to monitor recordedFiles changes
   useEffect(() => {
     if (recordedFiles.screen && recordedFiles.camera) {
-      console.log("Both recordings saved:");
-      console.log("Screen:", recordedFiles.screen);
-      console.log("Camera:", recordedFiles.camera);
-      // Reset for next recording
-      setRecordedFiles({});
+      console.log("All recordings saved:", recordedFiles);
+      // Handle completion here if needed
+      setRecordedFiles({}); // Reset for next recording
     }
   }, [recordedFiles]);
 
@@ -718,26 +781,6 @@ const ScreenRecorder = () => {
     getDevices();
   }, []);
 
-  // Get available microphones
-  // useEffect(() => {
-  //   async function getMicrophones() {
-  //     try {
-  //       const devices = await navigator.mediaDevices.enumerateDevices();
-  //       const mics = devices.filter((device) => device.kind === "audioinput");
-  //       setMicDevices(mics);
-
-  //       // Set default microphone
-  //       if (mics.length > 0) {
-  //         setSelectedMicId(mics[0].deviceId);
-  //       }
-  //     } catch (err) {
-  //       console.error("Error getting microphones:", err);
-  //     }
-  //   }
-
-  //   getMicrophones();
-  // }, []);
-
   // Get platform
   useEffect(() => {
     // Get platform on component mount
@@ -758,6 +801,10 @@ const ScreenRecorder = () => {
   const startRecordingSource = async (sourceId?: string) => {
     try {
       console.log("Starting recording for source:", sourceId);
+
+      // Start cursor tracking first
+      console.log("Starting cursor tracking...");
+      await (window as any).electron.startCursorTracking();
 
       if (sourceId) {
         await (window as any).electron.selectSource(sourceId);
@@ -917,27 +964,61 @@ const ScreenRecorder = () => {
       recorder.start(1000);
       setMediaRecorder(recorder);
       setIsRecording(true);
+
       setShowPicker(false);
     } catch (error) {
       console.error("Failed to start recording:", error);
+      try {
+        await (window as any).electron.stopCursorTracking();
+      } catch (e) {
+        console.error("Failed to stop cursor tracking after error:", e);
+      }
       setIsRecording(false);
       setShowPicker(false);
     }
   };
 
   const stopRecording = async () => {
-    // Stop screen recording
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.requestData();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      mediaRecorder.stop();
-    }
+    console.log("Stopping all recordings...");
 
-    // Stop camera recording
-    if (cameraRecorder && cameraRecorder.state !== "inactive") {
-      cameraRecorder.requestData();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      cameraRecorder.stop();
+    try {
+      // Stop recordings in sequence with proper timing
+      const stopSequence = async () => {
+        // 1. Stop cursor tracking first
+        console.log("Stopping cursor tracking...");
+        const cursorDataPath = await (
+          window as any
+        ).electron.stopCursorTracking();
+
+        // Update recorded files with cursor data path
+        setRecordedFiles((prev) => ({
+          ...prev,
+          cursorData: cursorDataPath,
+        }));
+
+        // 2. Stop screen recording
+        if (mediaRecorder && mediaRecorder.state !== "inactive") {
+          console.log("Stopping screen recording...");
+          mediaRecorder.requestData();
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          mediaRecorder.stop();
+        }
+
+        // 3. Stop camera recording
+        if (cameraRecorder && cameraRecorder.state !== "inactive") {
+          console.log("Stopping camera recording...");
+          cameraRecorder.requestData();
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          cameraRecorder.stop();
+        }
+      };
+
+      await stopSequence();
+      setIsRecording(false);
+    } catch (error) {
+      console.error("Error stopping recordings:", error);
+      // Ensure we still set recording state to false even if there's an error
+      setIsRecording(false);
     }
   };
 
@@ -1054,7 +1135,6 @@ const ScreenRecorder = () => {
             {/* End Camera Options */}
 
             {/* Start/Stop Recording Button */}
-
             <button
               onClick={isRecording ? stopRecording : handleStartRecording}
               className={`w-full py-3 px-4 rounded-md flex items-center justify-center gap-2 text-white font-medium ${

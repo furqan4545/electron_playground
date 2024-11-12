@@ -15,6 +15,9 @@ contextBridge.exposeInMainWorld("electron", {
   saveCameraRecording: (buffer: Uint8Array) =>
     ipcRenderer.invoke("saveCameraRecording", buffer),
   moveWindow: (x: number, y: number) => ipcRenderer.invoke("moveWindow", x, y), // Move camera window
+  // Add new cursor tracking methods
+  startCursorTracking: () => ipcRenderer.invoke("startCursorTracking"),
+  stopCursorTracking: () => ipcRenderer.invoke("stopCursorTracking"),
 });
 
 declare global {
@@ -36,6 +39,8 @@ declare global {
       toggleCamera: (show: boolean) => Promise<void>;
       saveCameraRecording: (buffer: Uint8Array) => Promise<string>;
       moveWindow: (x: number, y: number) => Promise<void>; // Move camera window
+      startCursorTracking: () => Promise<boolean>;
+      stopCursorTracking: () => Promise<string>;
     };
   }
 }
