@@ -16,6 +16,7 @@
     "dist:win": "npm run transpile:electron && npm run build && electron-builder --win --x64",
     "dist:linux": "npm run transpile:electron && npm run build && electron-builder --linux --x64"
   },
+  "gypfile": true,
   "dependencies": {
     "@ffmpeg-installer/ffmpeg": "^1.1.0",
     "@types/fluent-ffmpeg": "^2.1.27",
@@ -23,6 +24,7 @@
     "ffprobe-static": "^3.1.0",
     "fluent-ffmpeg": "^2.1.3",
     "lucide-react": "^0.454.0",
+    "node-addon-api": "^8.2.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-media-recorder": "^1.7.1",
@@ -42,6 +44,7 @@
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.14",
     "globals": "^15.11.0",
+    "node-gyp": "^10.2.0",
     "npm-run-all": "^4.1.5",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.14",

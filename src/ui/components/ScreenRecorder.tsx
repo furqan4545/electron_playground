@@ -67,6 +67,10 @@
 //     cursorData?: string;
 //   }>({});
 
+//   /////////////////////////// experimental code for native module /////////////////////////
+
+//   /////////////////////////// experimental end for native module /////////////////////////
+
 //   const handleCameraRecordingSave = (filePath: string) => {
 //     setRecordedFiles((prev) => ({
 //       ...prev,
@@ -94,17 +98,6 @@
 //       }
 //     };
 //   }, []);
-
-//   // // When both recordings are saved
-//   // useEffect(() => {
-//   //   if (recordedFiles.screen && recordedFiles.camera) {
-//   //     console.log("Both recordings saved:");
-//   //     console.log("Screen:", recordedFiles.screen);
-//   //     console.log("Camera:", recordedFiles.camera);
-//   //     // Reset for next recording
-//   //     setRecordedFiles({});
-//   //   }
-//   // }, [recordedFiles]);
 
 //   // Add this effect to monitor recordedFiles changes
 //   useEffect(() => {
@@ -172,8 +165,29 @@
 //       console.log("Starting cursor tracking...");
 //       await (window as any).electron.startCursorTracking();
 
+//       // if (sourceId) {
+//       //   await (window as any).electron.selectSource(sourceId);
+//       // }
 //       if (sourceId) {
-//         await (window as any).electron.selectSource(sourceId);
+//         // First select the source
+//         const sourceSelected = await (window as any).electron.selectSource(
+//           sourceId
+//         );
+//         if (!sourceSelected) {
+//           console.error("Failed to select source");
+//           return;
+//         }
+//         console.log("Source selected successfully");
+
+//         // Then start cursor tracking
+//         const trackingStarted = await (
+//           window as any
+//         ).electron.startCursorTracking();
+//         if (!trackingStarted) {
+//           console.error("Failed to start cursor tracking");
+//           return;
+//         }
+//         console.log("Cursor tracking started successfully");
 //       }
 
 //       const qualityPreset = QUALITY_PRESETS[quality];
@@ -701,6 +715,10 @@ const ScreenRecorder = () => {
     cursorData?: string;
   }>({});
 
+  /////////////////////////// experimental code for native module /////////////////////////
+
+  /////////////////////////// experimental end for native module /////////////////////////
+
   const handleCameraRecordingSave = (filePath: string) => {
     setRecordedFiles((prev) => ({
       ...prev,
@@ -728,17 +746,6 @@ const ScreenRecorder = () => {
       }
     };
   }, []);
-
-  // // When both recordings are saved
-  // useEffect(() => {
-  //   if (recordedFiles.screen && recordedFiles.camera) {
-  //     console.log("Both recordings saved:");
-  //     console.log("Screen:", recordedFiles.screen);
-  //     console.log("Camera:", recordedFiles.camera);
-  //     // Reset for next recording
-  //     setRecordedFiles({});
-  //   }
-  // }, [recordedFiles]);
 
   // Add this effect to monitor recordedFiles changes
   useEffect(() => {
@@ -806,8 +813,29 @@ const ScreenRecorder = () => {
       console.log("Starting cursor tracking...");
       await (window as any).electron.startCursorTracking();
 
+      // if (sourceId) {
+      //   await (window as any).electron.selectSource(sourceId);
+      // }
       if (sourceId) {
-        await (window as any).electron.selectSource(sourceId);
+        // First select the source
+        const sourceSelected = await (window as any).electron.selectSource(
+          sourceId
+        );
+        if (!sourceSelected) {
+          console.error("Failed to select source");
+          return;
+        }
+        console.log("Source selected successfully");
+
+        // Then start cursor tracking
+        const trackingStarted = await (
+          window as any
+        ).electron.startCursorTracking();
+        if (!trackingStarted) {
+          console.error("Failed to start cursor tracking");
+          return;
+        }
+        console.log("Cursor tracking started successfully");
       }
 
       const qualityPreset = QUALITY_PRESETS[quality];

@@ -16,8 +16,19 @@ contextBridge.exposeInMainWorld("electron", {
     ipcRenderer.invoke("saveCameraRecording", buffer),
   moveWindow: (x: number, y: number) => ipcRenderer.invoke("moveWindow", x, y), // Move camera window
   // Add new cursor tracking methods
+  // startCursorTracking: (bounds: {
+  //   x: number;
+  //   y: number;
+  //   width: number;
+  //   height: number;
+  // }) => ipcRenderer.invoke("startCursorTracking", bounds),
+  // stopCursorTracking: () => ipcRenderer.invoke("stopCursorTracking"),
   startCursorTracking: () => ipcRenderer.invoke("startCursorTracking"),
   stopCursorTracking: () => ipcRenderer.invoke("stopCursorTracking"),
+
+  /////////////////////////// experimental code for native module /////////////////////////
+
+  /////////////////////////// experimental end for native module /////////////////////////
 });
 
 declare global {
@@ -39,8 +50,18 @@ declare global {
       toggleCamera: (show: boolean) => Promise<void>;
       saveCameraRecording: (buffer: Uint8Array) => Promise<string>;
       moveWindow: (x: number, y: number) => Promise<void>; // Move camera window
+      // startCursorTracking: (bounds: {
+      //   x: number;
+      //   y: number;
+      //   width: number;
+      //   height: number;
+      // }) => Promise<boolean>;
+      // stopCursorTracking: () => Promise<string>;
       startCursorTracking: () => Promise<boolean>;
       stopCursorTracking: () => Promise<string>;
+      /////////////////////////// experimental code for native module /////////////////////////
+
+      /////////////////////////// experimental end for native module /////////////////////////
     };
   }
 }
