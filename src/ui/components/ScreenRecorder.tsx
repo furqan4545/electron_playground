@@ -715,10 +715,6 @@ const ScreenRecorder = () => {
     cursorData?: string;
   }>({});
 
-  /////////////////////////// experimental code for native module /////////////////////////
-
-  /////////////////////////// experimental end for native module /////////////////////////
-
   const handleCameraRecordingSave = (filePath: string) => {
     setRecordedFiles((prev) => ({
       ...prev,
